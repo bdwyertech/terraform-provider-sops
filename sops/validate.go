@@ -16,6 +16,6 @@ func validateInputType(inputType string) error {
 	case "raw":
 		return nil
 	default:
-		return fmt.Errorf("Don't know how to decode file with input type %s, set input_type to json, yaml, ini, dotenv or raw as appropriate", inputType)
+		return fmt.Errorf("don't know how to decode file with input type %s, set input_type to json, yaml, ini, dotenv or raw as appropriate", inputType)
 	}
 }

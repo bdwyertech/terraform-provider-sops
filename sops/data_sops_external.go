@@ -1,7 +1,7 @@
 package sops
 
 import (
-	"io/ioutil"
+	"io"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -39,7 +39,7 @@ func dataSourceExternal() *schema.Resource {
 
 func dataSourceExternalRead(d *schema.ResourceData, meta interface{}) error {
 	source := d.Get("source").(string)
-	content, err := ioutil.ReadAll(strings.NewReader(source))
+	content, err := io.ReadAll(strings.NewReader(source))
 	if err != nil {
 		return err
 	}

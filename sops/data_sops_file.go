@@ -2,7 +2,7 @@ package sops
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -40,7 +40,7 @@ func dataSourceFile() *schema.Resource {
 
 func dataSourceFileRead(d *schema.ResourceData, meta interface{}) error {
 	sourceFile := d.Get("source_file").(string)
-	content, err := ioutil.ReadFile(sourceFile)
+	content, err := os.ReadFile(sourceFile)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func dataSourceFileRead(d *schema.ResourceData, meta interface{}) error {
 		case ".ini":
 			format = "ini"
 		default:
-			return fmt.Errorf("Don't know how to decode file with extension %s, set input_type to json, yaml or raw as appropriate", ext)
+			return fmt.Errorf("don't know how to decode file with extension %s, set input_type to json, yaml or raw as appropriate", ext)
 		}
 	}
 

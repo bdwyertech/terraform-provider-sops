@@ -89,7 +89,7 @@ func readDataKey(content []byte, format string, key string, d *schema.ResourceDa
 	if err != nil {
 		return err
 	}
-	err, value := flattenFromKey(data, key)
+	value, err := flattenFromKey(data, key)
 	if err != nil {
 		return err
 	}

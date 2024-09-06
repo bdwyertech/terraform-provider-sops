@@ -2,7 +2,6 @@ package sops
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 
@@ -60,7 +59,7 @@ func dataSourceFileKey() *schema.Resource {
 
 func dataSourceFileKeyRead(d *schema.ResourceData, meta interface{}) error {
 	sourceFile := d.Get("source_file").(string)
-	content, err := ioutil.ReadFile(sourceFile)
+	content, err := os.ReadFile(sourceFile)
 	if err != nil {
 		return err
 	}

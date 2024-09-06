@@ -117,9 +117,9 @@ func sopsEncrypt(d *schema.ResourceData, content []byte, config *EncryptConfig) 
 	encType := d.Get("encryption_type").(string)
 	fmt.Printf("enc type: %s\n", encType)
 
-	groups, err, bytes, err2 := getKeyGroups(d, encType, config)
-	if err2 != nil {
-		return bytes, err2
+	groups, err := getKeyGroups(d, encType, config)
+	if err != nil {
+		return []byte{}, err
 	}
 	encrypt, err := Encrypt(EncryptOpts{
 		Cipher:            aes.NewCipher(),
@@ -145,12 +145,8 @@ func sopsEncrypt(d *schema.ResourceData, content []byte, config *EncryptConfig) 
 	return encrypt, nil
 }
 
-func getKeyGroups(d *schema.ResourceData, encType string, config *EncryptConfig) ([]sops2.KeyGroup, error, []byte, error) {
-	groups, err := KeyGroups(d, encType, config)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return groups, err, nil, nil
+func getKeyGroups(d *schema.ResourceData, encType string, config *EncryptConfig) ([]sops2.KeyGroup, error) {
+	return KeyGroups(d, encType, config)
 }
 
 func resourceSopsFileCreate(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
