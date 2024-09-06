@@ -57,6 +57,31 @@ func flattenSlice(data []interface{}) map[string]string {
 	return ret
 }
 
+func flattenFromKey(data map[string]interface{}, k string) (error, map[string]string) {
+	ret := make(map[string]string)
+	v := data[k]
+	if v == nil {
+		return fmt.Errorf("key %s not found", k), ret
+	}
+	switch typed := v.(type) {
+	case map[interface{}]interface{}:
+		for fk, fv := range flatten(convertMap(typed)) {
+			ret[fmt.Sprintf("%s.%s", k, fk)] = fv
+		}
+	case map[string]interface{}:
+		for fk, fv := range flatten(typed) {
+			ret[fmt.Sprintf("%s.%s", k, fk)] = fv
+		}
+	case []interface{}:
+		for fk, fv := range flattenSlice(typed) {
+			ret[fmt.Sprintf("%s.%s", k, fk)] = fv
+		}
+	default:
+		ret[k] = fmt.Sprint(typed)
+	}
+	return nil, ret
+}
+
 func convertMap(originalMap map[interface{}]interface{}) map[string]interface{} {
 	convertedMap := map[string]interface{}{}
 	for key, value := range originalMap {
