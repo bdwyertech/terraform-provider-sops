@@ -1,0 +1,106 @@
+# This GitHub action runs your tests for each commit push and/or PR. Optionally
+# you can turn it on using a cron schedule for regular testing.
+#
+name: Tests
+concurrency: test
+on:
+  pull_request:
+    paths-ignore:
+      - 'README.md'
+  push:
+    paths-ignore:
+      - 'README.md'
+  # For systems with an upstream API that could drift unexpectedly (like most SaaS systems, etc.),
+  # we recommend testing at a regular interval not necessarily tied to code changes. This will
+  # ensure you are alerted to something breaking due to an API change, even if the code did not
+  # change.
+  # schedule:
+  #   - cron: '0 13 * * *'
+jobs:
+  # ensure the code builds...
+  build:
+    name: Build & Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
+      - name: Build
+        env:
+          GOFLAGS: '-mod=vendor'
+          STATICCHECK_VERSION: '2023.1.7'
+        run: |
+          wget -qO- https://github.com/dominikh/go-tools/releases/download/${STATICCHECK_VERSION}/staticcheck_linux_amd64.tar.gz | tar zxf - --directory /usr/local/bin --strip-components=1 staticcheck/staticcheck
+          go fmt $(go list ./... | grep -v /vendor/) | xargs -I {} -r /bin/sh -c "/bin/echo {} && exit 1"
+          go vet $(go list ./... | grep -v /vendor/)
+          staticcheck --version
+          staticcheck $(go list ./... | grep -v /vendor/)
+          go build .
+
+  # run acceptance tests in a matrix with Terraform core versions
+  test:
+    name: Matrix Test
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # list whatever Terraform versions here you would like to support
+        terraform:
+          - '0.12.*'
+          - '0.13.*'
+          - '0.14.*'
+          - '0.15.*'
+          - '1.0.*'
+          - '1.1.*'
+          - '1.2.*'
+          - '1.3.*'
+          - '1.4.*'
+          - '1.5.*'
+          - '1.6.*'
+          - '1.7.*'
+          - '1.8.*'
+          - '1.9.*'
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+          check-latest: true
+        id: go
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ matrix.terraform }}
+          terraform_wrapper: false
+
+      # Random sleep so acceptance tests do not collide creating objects on Chef Server
+      # - name: Wait
+      #   uses: 1itachi/sleep-random@v1.0.0
+      #   with:
+      #     minutes: '2'
+      #     random: 'true'
+
+      - name: TF acceptance tests
+        timeout-minutes: 10
+        env:
+          GOFLAGS: '-mod=vendor'
+          TF_ACC: '1'
+          CHEF_SERVER_URL: ${{ secrets.CHEF_SERVER_URL }}
+          CHEF_CLIENT_NAME: ${{ secrets.CHEF_CLIENT_NAME }}
+          CHEF_KEY_MATERIAL: ${{ secrets.CHEF_KEY_MATERIAL }}
+
+        run: |
+          go test -v -cover ./internal/provider/

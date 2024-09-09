@@ -5,13 +5,16 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path"
 	"strconv"
 
+	"github.com/getsops/sops/v3"
 	sops2 "github.com/getsops/sops/v3"
 	"github.com/getsops/sops/v3/aes"
+	"github.com/getsops/sops/v3/decrypt"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -194,6 +197,20 @@ func resourceSopsFileRead(d *schema.ResourceData, i interface{}) error {
 		return nil
 	}
 
+	var format string
+	switch ext := path.Ext(outputPath); ext {
+	case ".json":
+		format = "json"
+	case ".yaml", ".yml":
+		format = "yaml"
+	case ".env":
+		format = "dotenv"
+	case ".ini":
+		format = "ini"
+	default:
+		return fmt.Errorf("don't know how to decode file with extension %s, set filename to json, yaml or raw as appropriate", ext)
+	}
+
 	// Verify that the content of the destination file matches the content we
 	// expect. Otherwise, the file might have been modified externally and we
 	// must reconcile.
@@ -202,7 +219,15 @@ func resourceSopsFileRead(d *schema.ResourceData, i interface{}) error {
 		return err
 	}
 
-	outputChecksum := sha1.Sum(outputContent)
+	cleartext, err := decrypt.Data(outputContent, format)
+	if userErr, ok := err.(sops.UserError); ok {
+		err = errors.New(userErr.UserError())
+	}
+	if err != nil {
+		return err
+	}
+
+	outputChecksum := sha1.Sum(cleartext)
 	if hex.EncodeToString(outputChecksum[:]) != d.Id() {
 		d.SetId("")
 		return nil
