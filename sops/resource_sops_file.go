@@ -12,9 +12,9 @@ import (
 	"strconv"
 
 	"github.com/getsops/sops/v3"
-	sops2 "github.com/getsops/sops/v3"
 	"github.com/getsops/sops/v3/aes"
 	"github.com/getsops/sops/v3/decrypt"
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -85,7 +85,7 @@ func resourceSourceFile() *schema.Resource {
 			},
 		},
 		CreateContext: resourceSopsFileCreate,
-		Read:          resourceSopsFileRead,
+		ReadContext:   resourceSopsFileRead,
 		Delete:        resourceSopsFileDelete,
 	}
 }
@@ -147,13 +147,12 @@ func sopsEncrypt(d *schema.ResourceData, content []byte, config *EncryptConfig) 
 	return encrypt, nil
 }
 
-func getKeyGroups(d *schema.ResourceData, encType string, config *EncryptConfig) ([]sops2.KeyGroup, error) {
+func getKeyGroups(d *schema.ResourceData, encType string, config *EncryptConfig) ([]sops.KeyGroup, error) {
 	return KeyGroups(d, encType, config)
 }
 
 func resourceSopsFileCreate(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
 	providerConfig := i.(*EncryptConfig)
-	var diags diag.Diagnostics
 	content, err := resourceLocalFileContent(d)
 	if err != nil {
 		return diag.FromErr(err)
@@ -184,10 +183,10 @@ func resourceSopsFileCreate(ctx context.Context, d *schema.ResourceData, i inter
 		return diag.FromErr(err)
 	}
 
-	return diags
+	return resourceSopsFileRead(ctx, d, i)
 }
 
-func resourceSopsFileRead(d *schema.ResourceData, i interface{}) error {
+func resourceSopsFileRead(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
 	// If the output file doesn't exist, mark the resource for creation.
 	outputPath := d.Get("filename").(string)
 	if _, err := os.Stat(outputPath); os.IsNotExist(err) {
@@ -206,7 +205,14 @@ func resourceSopsFileRead(d *schema.ResourceData, i interface{}) error {
 	case ".ini":
 		format = "ini"
 	default:
-		return fmt.Errorf("don't know how to decode file with extension %s, set filename to json, yaml or raw as appropriate", ext)
+		return diag.Diagnostics{
+			{
+				Severity:      diag.Error,
+				Summary:       "Error decoding file",
+				Detail:        fmt.Sprintf("don't know how to decode file with extension %s, set filename to json, yaml or raw as appropriate", ext),
+				AttributePath: cty.GetAttrPath("filename"),
+			},
+		}
 	}
 
 	// Verify that the content of the destination file matches the content we
@@ -214,7 +220,14 @@ func resourceSopsFileRead(d *schema.ResourceData, i interface{}) error {
 	// must reconcile.
 	outputContent, err := os.ReadFile(outputPath)
 	if err != nil {
-		return err
+		return diag.Diagnostics{
+			{
+				Severity:      diag.Error,
+				Summary:       "Error reading file",
+				Detail:        err.Error(),
+				AttributePath: cty.GetAttrPath("filename"),
+			},
+		}
 	}
 
 	cleartext, err := decrypt.Data(outputContent, format)
@@ -222,7 +235,14 @@ func resourceSopsFileRead(d *schema.ResourceData, i interface{}) error {
 		err = errors.New(userErr.UserError())
 	}
 	if err != nil {
-		return err
+		return diag.Diagnostics{
+			{
+				Severity:      diag.Error,
+				Summary:       "Error decrypting file",
+				Detail:        err.Error(),
+				AttributePath: cty.GetAttrPath("filename"),
+			},
+		}
 	}
 
 	outputChecksum := sha1.Sum(cleartext)

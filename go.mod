@@ -6,6 +6,7 @@ toolchain go1.22.6
 
 require (
 	github.com/getsops/sops/v3 v3.9.0
+	github.com/hashicorp/go-cty v1.4.1-0.20200723130312-85980079f637
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.34.0
 	github.com/mitchellh/go-wordwrap v1.0.1
 	gopkg.in/ini.v1 v1.67.0
@@ -73,7 +74,6 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-checkpoint v0.5.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-cty v1.4.1-0.20200723130312-85980079f637 // indirect
 	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.6.1 // indirect
