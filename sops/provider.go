@@ -18,7 +18,7 @@ func New(version string) func() *schema.Provider {
 				"sops_external":   dataSourceExternal(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
-				"sops_file": resourceSourceFile(),
+				"sops_file": resourceSopsFile(),
 			},
 			Schema: map[string]*schema.Schema{
 				"kms": {

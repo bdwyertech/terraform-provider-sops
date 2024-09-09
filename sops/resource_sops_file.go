@@ -19,7 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func resourceSourceFile() *schema.Resource {
+func resourceSopsFile() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"filename": {
@@ -141,9 +141,6 @@ func sopsEncrypt(d *schema.ResourceData, content []byte, config *EncryptConfig) 
 		return nil, err
 	}
 
-	if err != nil {
-		return nil, err
-	}
 	return encrypt, nil
 }
 
@@ -160,7 +157,7 @@ func resourceSopsFileCreate(ctx context.Context, d *schema.ResourceData, i inter
 	checksum := sha1.Sum(content)
 	d.SetId(hex.EncodeToString(checksum[:]))
 
-	content, err = sopsEncrypt(d, content, providerConfig)
+	encContent, err := sopsEncrypt(d, content, providerConfig)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -179,7 +176,9 @@ func resourceSopsFileCreate(ctx context.Context, d *schema.ResourceData, i inter
 	filePerm := d.Get("file_permission").(string)
 	fileMode, _ := strconv.ParseInt(filePerm, 8, 64)
 
-	if err := os.WriteFile(destination, content, os.FileMode(fileMode)); err != nil {
+	os.WriteFile("decrypted_create.txt", content, os.FileMode(fileMode))
+
+	if err := os.WriteFile(destination, encContent, os.FileMode(fileMode)); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -244,6 +243,8 @@ func resourceSopsFileRead(ctx context.Context, d *schema.ResourceData, i interfa
 			},
 		}
 	}
+
+	os.WriteFile("decrypted_read.txt", cleartext, os.ModePerm)
 
 	outputChecksum := sha1.Sum(cleartext)
 	if hex.EncodeToString(outputChecksum[:]) != d.Id() {
