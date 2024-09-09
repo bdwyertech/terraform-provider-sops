@@ -88,7 +88,6 @@ func resourceSourceFile() *schema.Resource {
 		Read:          resourceSopsFileRead,
 		Delete:        resourceSopsFileDelete,
 	}
-
 }
 
 func resourceSopsFileDelete(d *schema.ResourceData, _ interface{}) error {
@@ -159,11 +158,14 @@ func resourceSopsFileCreate(ctx context.Context, d *schema.ResourceData, i inter
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	checksum := sha1.Sum(content)
+	d.SetId(hex.EncodeToString(checksum[:]))
+
 	content, err = sopsEncrypt(d, content, providerConfig)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	//content = encrypt
+
 	destination := d.Get("filename").(string)
 
 	destinationDir := path.Dir(destination)
@@ -182,11 +184,7 @@ func resourceSopsFileCreate(ctx context.Context, d *schema.ResourceData, i inter
 		return diag.FromErr(err)
 	}
 
-	checksum := sha1.Sum(content)
-	d.SetId(hex.EncodeToString(checksum[:]))
-
 	return diags
-
 }
 
 func resourceSopsFileRead(d *schema.ResourceData, i interface{}) error {
